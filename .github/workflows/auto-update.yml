@@ -1,6 +1,7 @@
-name: Build auto-update my Panel
+name: Build Obfuscate BPB Panel
 
 on:
+  workflow_dispatch: 
   push:
     branches:
       - main
@@ -28,9 +29,18 @@ jobs:
         run: |
           npm install -g javascript-obfuscator
 
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq     
+
       - name: Clone BPB workjs
         run: |
-          wget -O origin.js https://raw.githubusercontent.com/bia-pain-bache/BPB-Worker-Panel/refs/heads/main/build/unobfuscated-worker.js
+          RESPONSE=$(curl -s https://api.github.com/repos/bia-pain-bache/BPB-Worker-Panel/releases/latest)
+          DOWNLOAD_URL=$(echo $RESPONSE | jq -r '.assets[] | select(.name == "worker.js") | .browser_download_url')
+          echo "DOWNLOAD_URL=$DOWNLOAD_URL" >> $GITHUB_ENV
+          echo "Found browser_download_url: $DOWNLOAD_URL"
+          wget -O origin.js $DOWNLOAD_URL
       
       - name: Obfuscate BPB worker js
         run: |
@@ -55,8 +65,3 @@ jobs:
           commit_message: ':arrow_up: update latest bpb panel'
           commit_author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
           push_options: '--set-upstream'
-          file_glob: true
-          prerelease: ${{ github.ref != 'refs/heads/main' }}
-          promote: ${{ github.ref == 'refs/heads/main' }}
-          make_latest: ${{ github.ref == 'refs/heads/main' }}
-          body: ${{ steps.read_release.outputs.RELEASE_BODY }}
